@@ -15,6 +15,6 @@ Including: File system, Message queue system, Key Value system, consensus system
   * MQ:
     1. Simple Message Queue: Done (ref https://www.cnblogs.com/jimisun/p/10108067.html)
   * KeyValue:
-    1. Redis: To do (ref: https://segmentfault.com/a/1190000025187289)
+    1. Redis(ICache): To do (ref: https://segmentfault.com/a/1190000025187289)
   * Consensus:
     1. Raft: To do 

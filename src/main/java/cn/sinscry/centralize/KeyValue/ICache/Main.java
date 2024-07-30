@@ -1,5 +1,7 @@
 package cn.sinscry.centralize.KeyValue.ICache;
 
+import cn.sinscry.centralize.KeyValue.ICache.POJO.ICache;
+
 import java.util.concurrent.TimeUnit;
 
 public class Main {
@@ -15,5 +17,7 @@ public class Main {
         TimeUnit.MILLISECONDS.sleep(500);
         assert cache.size()==1;
         System.out.println("After expire: " + cache.keySet());
+
+        System.exit(0);
     }
 }
