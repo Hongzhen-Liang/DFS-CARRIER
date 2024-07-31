@@ -43,13 +43,18 @@ public class LRUCache<K,V> {
     }
 
     public void put(K key, V value){
+        // get will make head point to node
         if(Objects.isNull(get(key))){
             if(this.cache.size()==this.capacity){
                 Node<K,V> node = tail.pre;
                 removeNode(node);
             }
             addNode(new Node<>(key,value));
+        }else{
+            // update node's value
+            this.cache.get(key).value = value;
         }
+
     }
 
     private void removeNode(Node<K,V> node){
