@@ -1,29 +1,29 @@
-package cn.sinscry.centralize.KeyValue.ICache;
+package cn.sinscry.centralize.KeyValue.ICache.Service;
 
-import cn.sinscry.centralize.KeyValue.ICache.Service.ICache;
+import org.junit.Assert;
+import org.junit.Test;
 
 import java.util.concurrent.TimeUnit;
 
-public class Main {
-    public static void main(String[] args) throws InterruptedException {
+public class ICacheTest {
+    @Test
+    public void baseTest() throws InterruptedException {
         ICache<String, String> cache = new ICache<>();
         cache.put("1", "1",100);
         cache.put("2", "2",200);
         System.out.println("Initial: " + cache.keySet());
-        assert cache.keySet().toString().equals("[1, 2]");
+        Assert.assertEquals("[1, 2]", cache.keySet().toString());
 
         TimeUnit.MILLISECONDS.sleep(150);
         System.out.println("Before get: " + cache.keySet());
-        assert cache.keySet().toString().equals("[1, 2]");
+        Assert.assertEquals("[1, 2]",cache.keySet().toString());
 
         cache.get("3");
         System.out.println("After get: " + cache.keySet());
-        assert cache.keySet().toString().equals("[2]");
+        Assert.assertEquals("[2]", cache.keySet().toString());
 
         TimeUnit.MILLISECONDS.sleep(500);
         System.out.println("After expire: " + cache.keySet());
-        assert cache.keySet().toString().equals("[]");
-
-        System.exit(0);
+        Assert.assertEquals("[]",cache.keySet().toString());
     }
 }

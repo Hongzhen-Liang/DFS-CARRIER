@@ -4,6 +4,8 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -103,5 +105,14 @@ public class ICache<K,V> extends ConcurrentHashMap<K,V> {
             this.remove(key);
         }
         return ++count;
+    }
+
+    public boolean persist(ICache<K, V> cache, String path) throws IOException {
+        Set<Map.Entry<K,V>> entrySet = cache.entrySet();
+        File file = new File(path);
+        if(!file.createNewFile()){
+            return false;
+        }
+        return true;
     }
 }
