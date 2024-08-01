@@ -6,8 +6,10 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Comparator;
@@ -55,9 +57,11 @@ public class ICache<K,V> extends ConcurrentHashMap<K,V> {
         this.expireKey();
         return super.get(key);
     }
-
     public void expire(K key, long expireAtRelative){
         long expireAtAbsolute = expireAtRelative + System.currentTimeMillis();
+        expireAbsolute(key, expireAtAbsolute);
+    }
+    private void expireAbsolute(K key, long expireAtAbsolute){
         // put the expiration into the queue
         Set<K> keys = Optional.ofNullable(expireTimeSortMap.get(expireAtAbsolute)).orElse(Sets.newHashSet());
         keys.add(key);
@@ -136,6 +140,21 @@ public class ICache<K,V> extends ConcurrentHashMap<K,V> {
                 }
             }
             out.close();
+            return true;
+        }catch (Exception e){
+            return false;
+        }
+    }
+
+    public boolean load(String path) throws FileNotFoundException {
+        try(BufferedReader in = new BufferedReader(new FileReader(path))){
+            String line = in.readLine();
+            while(line!=null && !line.isEmpty()){
+                PersistEntry<K,V> entry = JSON.parseObject(line, PersistEntry.class);
+                put(entry.getKey(),entry.getValue());
+                expireAbsolute(entry.getKey(),entry.getExpireTime());
+                line = in.readLine();
+            }
             return true;
         }catch (Exception e){
             return false;

@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
 public class ICacheTest {
+    String path="src/test/java/cn/sinscry/centralize/KeyValue/ICache/Service/test.txt";
     @Test
     public void baseTest() throws InterruptedException {
         ICache<String, String> cache = genCache();
@@ -36,9 +37,18 @@ public class ICacheTest {
 
     @Test
     public void persistTest() throws IOException {
-        String path="src/test/java/cn/sinscry/centralize/KeyValue/ICache/Service/test.txt";
         ICache<String, String> cache = genCache();
         Assert.assertTrue(cache.persist(path));
+        Assert.assertTrue(new File(path).delete());
+    }
+
+    @Test
+    public void loadTest() throws IOException{
+        ICache<String, String> cache = genCache();
+        Assert.assertTrue(cache.persist(path));
+        ICache<String, String> cacheCopy = new ICache<>();
+        Assert.assertTrue(cacheCopy.load(path));
+        Assert.assertEquals("[1, 2]",cacheCopy.keySet().toString());
         Assert.assertTrue(new File(path).delete());
     }
 }
