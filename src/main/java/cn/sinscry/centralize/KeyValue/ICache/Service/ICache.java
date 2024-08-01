@@ -34,17 +34,18 @@ public class ICache<K,V> extends ConcurrentHashMap<K,V> {
     public ICache(){
         super();
         // remove expired key periodically
-        EXECUTOR_SERVICE.scheduleAtFixedRate(new ExpireThread(), 0, 100, TimeUnit.MILLISECONDS);
+        EXECUTOR_SERVICE.scheduleAtFixedRate(new ExpireThread(), 0, 200, TimeUnit.MILLISECONDS);
     }
 
-    public void expire(K key, long expireAt){
+    public void expire(K key, long expireAtRelative){
+        long expireAtAbsolute = expireAtRelative + System.currentTimeMillis();
         // put the expiration into the queue
-        Set<K> keys = expireSortMap.get(expireAt+System.currentTimeMillis());
+        Set<K> keys = expireSortMap.get(expireAtAbsolute);
         if(Objects.isNull(keys)){
             keys = Sets.newHashSet();
         }
         keys.add(key);
-        expireSortMap.put(expireAt+System.currentTimeMillis(), keys);
+        expireSortMap.put(expireAtAbsolute, keys);
         // keep the up-to-date expiration command only
         if(expireMap.containsKey(key)){
             expireMap.get(key).remove(key);
@@ -64,11 +65,17 @@ public class ICache<K,V> extends ConcurrentHashMap<K,V> {
 
     private synchronized void expireKey(){
         int count = LIMIT;
+        int remainCount;
+        System.out.println(expireSortMap.entrySet());
         for(Entry<Long,Set<K>> entry:expireSortMap.entrySet()){
             if(count<=0){
                 return;
             }
-            count=this.expireKey(entry, count);
+            remainCount=this.expireKey(entry, count);
+            if(remainCount==count){
+                return;
+            }
+            count = remainCount;
         }
     }
 

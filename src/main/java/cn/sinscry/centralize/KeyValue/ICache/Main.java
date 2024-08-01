@@ -11,12 +11,17 @@ public class Main {
         cache.put("2", "2");
 
         cache.expire("1", 100);
+        cache.expire("2", 200);
         assert cache.size()==2;
         System.out.println("Before expire: " + cache.keySet());
 
-        TimeUnit.MILLISECONDS.sleep(500);
+        TimeUnit.MILLISECONDS.sleep(150);
+        cache.get("3");
         assert cache.size()==1;
+
+        TimeUnit.MILLISECONDS.sleep(300);
         System.out.println("After expire: " + cache.keySet());
+        assert cache.isEmpty();
 
         System.exit(0);
     }
