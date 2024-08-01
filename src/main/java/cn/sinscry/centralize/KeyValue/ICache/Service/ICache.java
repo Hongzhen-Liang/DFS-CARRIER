@@ -1,28 +1,29 @@
 package cn.sinscry.centralize.KeyValue.ICache.Service;
 
+import cn.sinscry.common.pojo.PersistEntry;
+import com.alibaba.fastjson.JSON;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class ICache<K,V> extends ConcurrentHashMap<K,V> {
     // cleaning size limit for each period
     private static final int MAX_EXPIRE_LIMIT = 100;
     // scheduler
-    private static final ScheduledExecutorService EXECUTOR_SERVICE = Executors.newSingleThreadScheduledExecutor();
     private static final long GC_period = 200;
 
     // Expired Map for cleaning outdated data in order
@@ -35,10 +36,12 @@ public class ICache<K,V> extends ConcurrentHashMap<K,V> {
     // Expired Map for removing key from the Set it resided.
     private final Map<K,Set<K>> expireKeyMap = Maps.newHashMap();
 
+    String persistPath=null;
+
     public ICache(){
         super();
         // remove expired key periodically
-        EXECUTOR_SERVICE.scheduleAtFixedRate(new ExpireThread(), 0, GC_period, TimeUnit.MILLISECONDS);
+        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(new ExpireThread(), 0, GC_period, TimeUnit.MILLISECONDS);
     }
 
     public void put(K key, V value, long expireAtRelative){
@@ -107,12 +110,35 @@ public class ICache<K,V> extends ConcurrentHashMap<K,V> {
         return ++count;
     }
 
-    public boolean persist(ICache<K, V> cache, String path) throws IOException {
-        Set<Map.Entry<K,V>> entrySet = cache.entrySet();
-        File file = new File(path);
-        if(!file.createNewFile()){
+    private class PersistThread implements Runnable{
+        @Override
+        public void run(){
+            if(persistPath!=null){
+                try {
+                    persist(persistPath);
+                } catch (IOException e) {
+                    System.out.println("persist error");
+                }
+            }
+        }
+    }
+
+    public synchronized boolean persist(String path) throws IOException {
+        try(BufferedWriter out = new BufferedWriter(new FileWriter(path))){
+            for(Entry<Long, Set<K>> entry:expireTimeSortMap.entrySet()){
+                for(K key:entry.getValue()){
+                    PersistEntry<K,V> persistEntry = new PersistEntry<>();
+                    persistEntry.setKey(key);
+                    persistEntry.setValue(get(key));
+                    persistEntry.setExpireTime(entry.getKey());
+                    String line = JSON.toJSONString(persistEntry)+"\n";
+                    out.write(line);
+                }
+            }
+            out.close();
+            return true;
+        }catch (Exception e){
             return false;
         }
-        return true;
     }
 }
