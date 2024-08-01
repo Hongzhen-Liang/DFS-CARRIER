@@ -1,4 +1,4 @@
-package cn.sinscry.centralize.KeyValue.ICache.POJO;
+package cn.sinscry.centralize.KeyValue.ICache.Service;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;

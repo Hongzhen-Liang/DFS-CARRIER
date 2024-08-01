@@ -1,6 +1,6 @@
 package cn.sinscry.centralize.KeyValue.ICache;
 
-import cn.sinscry.centralize.KeyValue.ICache.POJO.ICache;
+import cn.sinscry.centralize.KeyValue.ICache.Service.ICache;
 
 import java.util.concurrent.TimeUnit;
 
