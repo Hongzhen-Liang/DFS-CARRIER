@@ -8,6 +8,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,25 +17,26 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class ICache<K,V> extends ConcurrentHashMap<K,V> {
+    // cleaning size limit for each period
+    private static final int MAX_EXPIRE_LIMIT = 100;
+    // scheduler
+    private static final ScheduledExecutorService EXECUTOR_SERVICE = Executors.newSingleThreadScheduledExecutor();
+    private static final long GC_period = 200;
 
-    // Only keep the latest expire command
-    private final Map<K,Set<K>> expireMap = Maps.newHashMap();
     // Expired Map for cleaning outdated data in order
-    private final Map<Long, Set<K>> expireSortMap = new TreeMap<>(new Comparator<Long>() {
+    private final Map<Long, Set<K>> expireTimeSortMap = new TreeMap<>(new Comparator<Long>() {
         @Override
         public int compare(Long o1, Long o2){
             return (int)(o1-o2);
         }
     });
+    // Expired Map for removing key from the Set it resided.
+    private final Map<K,Set<K>> expireKeyMap = Maps.newHashMap();
 
-    // cleaning size limit for each period
-    private static final int LIMIT = 100;
-    // scheduler
-    private static final ScheduledExecutorService EXECUTOR_SERVICE = Executors.newSingleThreadScheduledExecutor();
     public ICache(){
         super();
         // remove expired key periodically
-        EXECUTOR_SERVICE.scheduleAtFixedRate(new ExpireThread(), 0, 200, TimeUnit.MILLISECONDS);
+        EXECUTOR_SERVICE.scheduleAtFixedRate(new ExpireThread(), 0, GC_period, TimeUnit.MILLISECONDS);
     }
 
     public void put(K key, V value, long expireAtRelative){
@@ -42,26 +44,30 @@ public class ICache<K,V> extends ConcurrentHashMap<K,V> {
         this.expire(key, expireAtRelative);
     }
 
+    @Override
+    public V get(Object key){
+        // refresh the value before get
+        this.expireKey();
+        return super.get(key);
+    }
+
     public void expire(K key, long expireAtRelative){
         long expireAtAbsolute = expireAtRelative + System.currentTimeMillis();
         // put the expiration into the queue
-        Set<K> keys = expireSortMap.get(expireAtAbsolute);
-        if(Objects.isNull(keys)){
-            keys = Sets.newHashSet();
-        }
+        Set<K> keys = Optional.ofNullable(expireTimeSortMap.get(expireAtAbsolute)).orElse(Sets.newHashSet());
         keys.add(key);
-        expireSortMap.put(expireAtAbsolute, keys);
-        // keep the up-to-date expiration command only
-        if(expireMap.containsKey(key)){
-            expireMap.get(key).remove(key);
+        expireTimeSortMap.put(expireAtAbsolute, keys);
+        // remove the key from other time set.
+        if(expireKeyMap.containsKey(key)){
+            expireKeyMap.get(key).remove(key);
         }
-        expireMap.put(key,keys);
+        expireKeyMap.put(key,keys);
     }
 
     private class ExpireThread implements Runnable{
         @Override
         public void run(){
-            if(expireSortMap.isEmpty()){
+            if(expireTimeSortMap.isEmpty()){
                 return;
             }
             expireKey();
@@ -69,48 +75,33 @@ public class ICache<K,V> extends ConcurrentHashMap<K,V> {
     }
 
     private synchronized void expireKey(){
-        int count = LIMIT;
-        int remainCount;
-        for(Entry<Long,Set<K>> entry:expireSortMap.entrySet().stream().toList()){
+        int count = MAX_EXPIRE_LIMIT;
+        for(Entry<Long,Set<K>> entry:Lists.newArrayList(expireTimeSortMap.entrySet())){
             if(entry.getValue().isEmpty()){
-                expireSortMap.remove(entry.getKey());
+                expireTimeSortMap.remove(entry.getKey());
                 continue;
             }
-            if(count<=0){
+            int newCount=this.expireKey(entry, count);
+            if(newCount==0 || newCount==count){
                 return;
             }
-            remainCount=this.expireKey(entry, count);
-            if(remainCount==count){
-                return;
-            }
-            count = remainCount;
+            count = newCount;
         }
     }
 
     // Returns the number of deletions still needed
     private int expireKey(Entry<Long, Set<K>> entry, int count){
-        Long expireTime = entry.getKey();
-        if(System.currentTimeMillis()<expireTime){
+        if(count==0 || System.currentTimeMillis()<entry.getKey()){
             return count;
         }
-        entry.getValue().retainAll(expireMap.keySet());
         List<K> keys = Lists.newArrayList(entry.getValue());
-        int res = Math.max(count-keys.size(),0);
-        while(count!=res){
+        int remainCount = Math.max(count-keys.size(),0);
+        while(count--!=remainCount){
             K key = keys.removeFirst();
             entry.getValue().remove(key);
+            expireKeyMap.remove(key);
             this.remove(key);
-            expireMap.remove(key);
-            count--;
         }
-        return res;
-    }
-
-    // refresh the value before get
-    @Override
-    public V get(Object key){
-        // expire key first;
-        this.expireKey();
-        return super.get(key);
+        return ++count;
     }
 }
