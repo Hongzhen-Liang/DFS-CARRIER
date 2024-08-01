@@ -37,6 +37,11 @@ public class ICache<K,V> extends ConcurrentHashMap<K,V> {
         EXECUTOR_SERVICE.scheduleAtFixedRate(new ExpireThread(), 0, 200, TimeUnit.MILLISECONDS);
     }
 
+    public void put(K key, V value, long expireAtRelative){
+        super.put(key, value);
+        this.expire(key, expireAtRelative);
+    }
+
     public void expire(K key, long expireAtRelative){
         long expireAtAbsolute = expireAtRelative + System.currentTimeMillis();
         // put the expiration into the queue
@@ -66,8 +71,11 @@ public class ICache<K,V> extends ConcurrentHashMap<K,V> {
     private synchronized void expireKey(){
         int count = LIMIT;
         int remainCount;
-        System.out.println(expireSortMap.entrySet());
-        for(Entry<Long,Set<K>> entry:expireSortMap.entrySet()){
+        for(Entry<Long,Set<K>> entry:expireSortMap.entrySet().stream().toList()){
+            if(entry.getValue().isEmpty()){
+                expireSortMap.remove(entry.getKey());
+                continue;
+            }
             if(count<=0){
                 return;
             }
