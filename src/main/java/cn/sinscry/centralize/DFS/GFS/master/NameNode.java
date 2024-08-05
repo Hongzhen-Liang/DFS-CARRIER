@@ -16,6 +16,10 @@ public class NameNode implements Serializable {
         chunkVoList = new ArrayList<>();
     }
 
+    public String getNodeName(){
+        return nodeName;
+    }
+
     public List<ChunkVo> getChunkVoList(){
         return this.chunkVoList;
     }

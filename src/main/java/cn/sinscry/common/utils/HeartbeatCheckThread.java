@@ -12,7 +12,7 @@ public class HeartbeatCheckThread extends Thread{
     public void run(){
         while(true){
             try {
-                Thread.sleep(30000);
+                Thread.sleep(3000);
                 masterBase.heartbeatScan();
             }catch (Exception e){
                 e.printStackTrace();
