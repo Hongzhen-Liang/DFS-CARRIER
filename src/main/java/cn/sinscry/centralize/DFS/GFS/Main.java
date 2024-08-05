@@ -1,7 +1,7 @@
 package cn.sinscry.centralize.DFS.GFS;
 
 import cn.sinscry.centralize.DFS.GFS.config.SMRMISocket;
-import cn.sinscry.centralize.DFS.GFS.master.MasterNode;
+import cn.sinscry.centralize.DFS.GFS.master.MasterBase;
 import cn.sinscry.common.utils.ConfigUtils;
 
 import java.net.InetAddress;
@@ -15,8 +15,8 @@ public class Main {
             String masterIp = InetAddress.getLocalHost().getHostAddress();
             RMISocketFactory.setSocketFactory(new SMRMISocket());
             LocateRegistry.createRegistry(ConfigUtils.MASTER_PORT);
-            MasterNode masterNode = new MasterNode();
-            Naming.rebind("rmi://"+masterIp+":"+ConfigUtils.MASTER_PORT+"/master", masterNode);
+            MasterBase masterBase = new MasterBase();
+            Naming.rebind("rmi://"+masterIp+":"+ConfigUtils.MASTER_PORT+"/master", masterBase);
             System.out.println("Master IP Address: " + masterIp);
             System.out.println("Master started");
         } catch (Exception e) {
