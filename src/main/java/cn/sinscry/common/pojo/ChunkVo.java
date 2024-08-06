@@ -63,4 +63,15 @@ public class ChunkVo implements Serializable {
         return this.fileName;
     }
 
+    public long getByteSize(){
+        return this.byteSize;
+    }
+    public void setByteSize(long byteSize){
+        this.byteSize = byteSize;
+    }
+
+    public void setHash(String hash){
+        this.hash = hash;
+    }
+
 }

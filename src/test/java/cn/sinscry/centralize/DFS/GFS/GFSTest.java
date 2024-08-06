@@ -12,7 +12,6 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintStream;
 import java.net.InetAddress;
 import java.rmi.Naming;
@@ -22,6 +21,7 @@ import java.rmi.server.RMISocketFactory;
 public class GFSTest {
     private  static final String prefixPath="src/test/java/cn/sinscry/centralize/DFS/GFS/";
     private static final String testFile="test.txt";
+
 
 
     public static void main(String[] args) throws Exception {
@@ -90,6 +90,14 @@ public class GFSTest {
     public void getFileListTest() throws Exception{
         ClientBase client = startClient(ConfigUtils.MASTER_PORT);
         client.getFileList();
+    }
+
+    @Test
+    public void appendFileTest() throws Exception{
+        ClientBase client = startClient(ConfigUtils.MASTER_PORT);
+        for(int i=0;i<10000;i++){
+            client.appendFile(testFile,prefixPath+testFile);
+        }
     }
 
 

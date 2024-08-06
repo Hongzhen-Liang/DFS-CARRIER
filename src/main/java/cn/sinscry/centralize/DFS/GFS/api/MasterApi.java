@@ -13,4 +13,5 @@ public interface MasterApi extends Remote {
     List<ChunkVo> getChunks(String fileName) throws RemoteException;
     boolean deleteNameNode(String fileName) throws Exception;
     List<String> getFileList() throws Exception;
+    void updateNameNode(String fileName, long length) throws Exception;
 }

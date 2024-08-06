@@ -4,6 +4,7 @@ import cn.sinscry.centralize.DFS.GFS.api.WorkerApi;
 import cn.sinscry.centralize.DFS.GFS.api.MasterApi;
 import cn.sinscry.common.pojo.ChunkVo;
 import cn.sinscry.common.utils.HeartbeatCheckThread;
+import cn.sinscry.common.utils.SecurityUtil;
 import com.google.common.collect.Lists;
 
 import javax.naming.Name;
@@ -202,6 +203,20 @@ public class MasterBase extends UnicastRemoteObject implements MasterApi {
     @Override
     public List<String> getFileList() throws Exception {
         return nameNodes.stream().map(NameNode::getNodeName).collect(Collectors.toList());
+    }
+
+    @Override
+    public void updateNameNode(String fileName, long length) throws Exception {
+        for(NameNode nameNode:nameNodes){
+            if(nameNode.getNodeName().equals(fileName)){
+                ChunkVo chunkVo = nameNode.getChunkVos().getLast();
+                chunkVo.setByteSize(length);
+                String hash = ((WorkerApi) Naming.lookup(
+                        "rmi://" + chunkVo.getReplicaServerName().iterator().next() + "/worker")).getHash(chunkVo);
+                chunkVo.setHash(hash);
+                break;
+            }
+        }
     }
 
     private void setReplicaChunk(ChunkVo chunkVo){

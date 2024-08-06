@@ -33,17 +33,9 @@ public class ClientBase {
         File file = new File(fileAddress);
         boolean flag = false;
         try(InputStream input = new FileInputStream(file)){
-            int length, seq=0;
-            byte[] buffer = new byte[CHUNK_SIZE];
             flag = masterApi.addNameNode(file.getName());
             if(flag){
-                while((length = input.read(buffer, 0, CHUNK_SIZE))>0){
-                    byte[] upLoadBytes = new byte[length];
-                    System.arraycopy(buffer, 0, upLoadBytes, 0, length);
-                    String hash = SecurityUtil.getMd5(upLoadBytes);
-                    uploadChunk(file.getName(), seq, length, upLoadBytes, hash);
-                    seq++;
-                }
+                appendChunk(file.getName(), 0, input);
             }
         } catch (Exception e) {
             System.out.println(e.getLocalizedMessage());
@@ -92,5 +84,39 @@ public class ClientBase {
         List<String> fileList = masterApi.getFileList();
         System.out.println(fileList);
         return fileList;
+    }
+
+    public void appendFile(String fileName, String appendFileAddress) throws Exception {
+        try(InputStream input = new FileInputStream(appendFileAddress)) {
+            List<ChunkVo> chunkInfoList = masterApi.getChunks(fileName);
+            if (chunkInfoList.isEmpty()) {
+                upLoadFile(appendFileAddress);
+                return;
+            }
+            ChunkVo chunkVo = chunkInfoList.getLast();
+            updateChunk(fileName, chunkVo, input);
+            appendChunk(fileName, chunkVo.getSeq()+1, input);
+        }
+        System.out.println("append file success!");
+    }
+
+    private void updateChunk(String fileName, ChunkVo chunkVo, InputStream in) throws Exception {
+        int remainSize=(int)(CHUNK_SIZE - chunkVo.getByteSize());
+        if(remainSize>0){
+            byte[] bytes = ConvertUtil.file2Byte(in, remainSize);
+            List<String> replicaServerNames = Lists.newArrayList(chunkVo.getReplicaServerName());
+            ((WorkerApi) Naming.lookup("rmi://" + replicaServerNames.removeFirst() + "/worker")).updateChunk(chunkVo, bytes, replicaServerNames);
+            masterApi.updateNameNode(fileName, chunkVo.getByteSize() + bytes.length);
+        }
+    }
+
+    private void appendChunk(String fileName, int seq, InputStream input) throws Exception {
+        byte[] upLoadBytes = ConvertUtil.file2Byte(input, CHUNK_SIZE);
+        while (upLoadBytes.length > 0) {
+            String hash = SecurityUtil.getMd5(upLoadBytes);
+            uploadChunk(fileName, seq, upLoadBytes.length, upLoadBytes, hash);
+            upLoadBytes = ConvertUtil.file2Byte(input, CHUNK_SIZE);
+            seq++;
+        }
     }
 }

@@ -7,6 +7,7 @@ import cn.sinscry.common.utils.ConvertUtil;
 import cn.sinscry.common.utils.SecurityUtil;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
@@ -79,13 +80,24 @@ public class WorkerBase extends UnicastRemoteObject implements WorkerApi {
         return replicaServerNames;
     }
 
+    @Override
+    public String getHash(ChunkVo chunkVo) throws Exception {
+        return chunkHash.get(chunkVo.getChunkId());
+    }
+
+    @Override
+    public boolean updateChunk(ChunkVo chunkVo, byte[] bytes, List<String> replicaServerNames) throws Exception {
+        String filePath = getFilePath(chunkVo);
+        OutputStream output = new FileOutputStream(filePath, true);
+        output.write(bytes);
+        output.close();
+        chunkHash.put(chunkVo.getChunkId(), SecurityUtil.getMd5(filePath));
+        return replicaServerNames.isEmpty() || ((WorkerApi) Naming.lookup("rmi://" + replicaServerNames.removeFirst() + "/worker")).updateChunk(chunkVo, bytes, replicaServerNames);
+    }
+
     private String saveChunkFile(ChunkVo chunkVo, byte[] bytes) throws Exception{
         String filePath = getFilePath(chunkVo);
-        File file = new File(filePath);
-        if(!file.exists()){
-            file.createNewFile();
-        }
-        OutputStream output = new FileOutputStream(file, false);
+        OutputStream output = new FileOutputStream(filePath, false);
         output.write(bytes);
         output.close();
         return SecurityUtil.getMd5(filePath);
@@ -94,5 +106,4 @@ public class WorkerBase extends UnicastRemoteObject implements WorkerApi {
     private String getFilePath(ChunkVo chunkVo){
         return prefixPath + chunkVo.getFileName()+"_"+chunkVo.getChunkId();
     }
-
 }
