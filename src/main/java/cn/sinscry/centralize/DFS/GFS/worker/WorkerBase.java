@@ -64,6 +64,21 @@ public class WorkerBase extends UnicastRemoteObject implements WorkerApi {
         return ConvertUtil.file2Byte(filePath);
     }
 
+    @Override
+    public List<String> deleteChunk(ChunkVo chunkVo, List<String> replicaServerNames) throws Exception {
+        if(chunkIdList.contains(chunkVo.getChunkId())){
+            File file = new File(getFilePath(chunkVo));
+            if(file.delete()){
+                chunkIdList.remove(chunkVo.getChunkId());
+                chunkHash.remove(chunkVo.getChunkId());
+                if(!replicaServerNames.isEmpty()){
+                    replicaServerNames = ((WorkerApi) Naming.lookup("rmi://" + replicaServerNames.removeFirst() + "/worker")).deleteChunk(chunkVo, replicaServerNames);
+                }
+            }
+        }
+        return replicaServerNames;
+    }
+
     private String saveChunkFile(ChunkVo chunkVo, byte[] bytes) throws Exception{
         String filePath = getFilePath(chunkVo);
         File file = new File(filePath);

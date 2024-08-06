@@ -8,20 +8,37 @@ import cn.sinscry.centralize.DFS.GFS.worker.WorkerBase;
 import cn.sinscry.common.utils.ConfigUtils;
 import org.junit.Test;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.rmi.Naming;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.server.RMISocketFactory;
 
 public class GFSTest {
     private  static final String prefixPath="src/test/java/cn/sinscry/centralize/DFS/GFS/";
+    private static final String testFile="test.txt";
+
 
     public static void main(String[] args) throws Exception {
+        genFile(prefixPath+testFile);
         startMaster(ConfigUtils.MASTER_PORT);
         startWorker(ConfigUtils.MASTER_PORT, ConfigUtils.WORKER_SERVICE_PORT);
         startWorker(ConfigUtils.MASTER_PORT, ConfigUtils.WORKER_SERVICE_PORT+1);
+    }
+
+    public static void genFile(String filePath) throws FileNotFoundException {
+        PrintStream ps = new PrintStream( new FileOutputStream(filePath));
+        ps.println("GFS testing");
+    }
+
+    @Test
+    public void genFileTest() throws FileNotFoundException {
+        genFile(prefixPath+testFile);
     }
 
     @Test
@@ -41,6 +58,7 @@ public class GFSTest {
     }
 
     public static void startWorker(int masterPort, int workerPort) throws Exception {
+        new File(prefixPath+"worker"+workerPort).mkdir();
         String masterIp = InetAddress.getLocalHost().getHostAddress();
         WorkerBase workerBase = new WorkerBase(masterIp, masterPort, workerPort, prefixPath+"/worker"+workerPort+"/");
         LocateRegistry.createRegistry(workerPort);
@@ -53,15 +71,20 @@ public class GFSTest {
     @Test
     public void upLoadFileTest() throws Exception {
         ClientBase client = startClient(ConfigUtils.MASTER_PORT);
-        client.upLoadFile(prefixPath+"test.txt");
+        client.upLoadFile(prefixPath+testFile);
     }
 
     @Test
     public void downloadFileTest() throws Exception{
         ClientBase client = startClient(ConfigUtils.MASTER_PORT);
-        client.downloadFile("test.txt");
+        client.downloadFile(testFile);
     }
 
+    @Test
+    public void deleteFileTest() throws Exception{
+        ClientBase client = startClient(ConfigUtils.MASTER_PORT);
+        client.deleteFile(testFile);
+    }
 
 
     public ClientBase startClient(int masterPort) throws Exception {

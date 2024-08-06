@@ -6,6 +6,7 @@ import cn.sinscry.common.pojo.ChunkVo;
 import cn.sinscry.common.utils.HeartbeatCheckThread;
 import com.google.common.collect.Lists;
 
+import javax.naming.Name;
 import java.rmi.Naming;
 import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
@@ -24,11 +25,11 @@ public class MasterBase extends UnicastRemoteObject implements MasterApi {
     private final int replicaNum=3;
     private final List<String> wokerServerList;
     private final Map<String, List<ChunkVo>> serverChunkMap;
-    private final List<NameNode> nameNodeList;
+    private final List<NameNode> nameNodes;
     public MasterBase() throws RemoteException {
         this.wokerServerList = new ArrayList<>();
         this.serverChunkMap = new LinkedHashMap<>();
-        this.nameNodeList = new ArrayList<>();
+        this.nameNodes = new ArrayList<>();
         Thread heartbeatCheckThread = new HeartbeatCheckThread(this);
         heartbeatCheckThread.start();
     }
@@ -91,7 +92,7 @@ public class MasterBase extends UnicastRemoteObject implements MasterApi {
                     String serverName = chunkVo.removeReplicaServerName(failedServer);
                     String replicaServerName = allocateNode(chunkVo, serverName);
                     ((WorkerApi) Naming.lookup(
-                            "rmi://" + serverName + "/chunkServer")).backupChunk(chunkVo, replicaServerName);
+                            "rmi://" + serverName + "/worker")).backupChunk(chunkVo, replicaServerName);
                     System.out.println("finish solving down server");
                 }catch (Exception e){
                     System.out.println("failed to processing server");
@@ -112,7 +113,7 @@ public class MasterBase extends UnicastRemoteObject implements MasterApi {
                         continue;
                     }
                     ((WorkerApi) Naming.lookup(
-                            "rmi://" + serverName + "/chunkServer")).backupChunk(chunkVo, failedServer);
+                            "rmi://" + serverName + "/worker")).backupChunk(chunkVo, failedServer);
                 }catch (Exception e){
                     System.out.println("recover failed");
                     e.printStackTrace();
@@ -137,7 +138,7 @@ public class MasterBase extends UnicastRemoteObject implements MasterApi {
 
     @Override
     public void addNameNode(String fileName){
-        nameNodeList.add(new NameNode(fileName));
+        nameNodes.add(new NameNode(fileName));
     }
     @Override
     public ChunkVo addChunk(String fileName, int seq, long length, String hash){
@@ -146,7 +147,7 @@ public class MasterBase extends UnicastRemoteObject implements MasterApi {
 
         setReplicaChunk(chunkVo);
 
-        for(NameNode nameNode:nameNodeList){
+        for(NameNode nameNode:nameNodes){
             if(nameNode.getNodeName().equals(fileName)){
                 nameNode.getChunkVos().add(chunkVo);
                 chunkVo.setNameNode(nameNode);
@@ -158,12 +159,40 @@ public class MasterBase extends UnicastRemoteObject implements MasterApi {
 
     @Override
     public List<ChunkVo> getChunks(String fileName) throws RemoteException {
-        for(NameNode nameNode:nameNodeList){
+        for(NameNode nameNode:nameNodes){
             if(nameNode.getNodeName().equals(fileName)){
                 return nameNode.getChunkVos();
             }
         }
         return new ArrayList<>();
+    }
+
+    @Override
+    public boolean deleteNameNode(String fileName) throws Exception {
+        List<String> replicaServerNames;
+        NameNode targetNameNode=null;
+        for(NameNode nameNode:nameNodes){
+            if(nameNode.getNodeName().equals(fileName)){
+                for(ChunkVo chunkVo:nameNode.getChunkVos()){
+                    replicaServerNames = Lists.newArrayList(chunkVo.getReplicaServerName());
+                    WorkerApi workerApi = (WorkerApi) Naming.lookup("rmi://" + replicaServerNames.removeFirst() + "/worker");
+                    replicaServerNames = workerApi.deleteChunk(chunkVo, replicaServerNames);
+                    if(!replicaServerNames.isEmpty()){
+                        System.out.println(chunkVo+"delete failed on "+replicaServerNames);
+                        return false;
+                    }
+                }
+            }
+            targetNameNode = nameNode;
+            break;
+        }
+        if(targetNameNode==null){
+            System.out.println("file not exists");
+            return false;
+        }
+        nameNodes.remove(targetNameNode);
+        System.out.println(fileName+" file deleted");
+        return true;
     }
 
     private void setReplicaChunk(ChunkVo chunkVo){

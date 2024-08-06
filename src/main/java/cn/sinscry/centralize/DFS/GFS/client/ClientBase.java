@@ -62,18 +62,29 @@ public class ClientBase {
     public String downloadFile(String fileName) throws Exception{
         System.out.println("downloading files...");
         String fileAddress = prefixPath + "new_" + fileName;
-        File localFile = new File(fileAddress);
-        OutputStream output = new FileOutputStream(localFile);
+        OutputStream output = new FileOutputStream(fileAddress);
         List<ChunkVo> chunkVos = masterApi.getChunks(fileName);
         for(ChunkVo chunkVo:chunkVos){
-            output.write(downloadChunk(chunkVo));
+            byte[] downloadBytes = downloadChunk(chunkVo);
+            if(!SecurityUtil.getMd5(downloadBytes).equals(chunkVo.getHash())){
+                System.out.println(chunkVo.getChunkId()+"chunk is polluted");
+                return "";
+            }
+            output.write(downloadBytes);
         }
         output.close();
+        System.out.println(fileName+(chunkVos.isEmpty()?" files doesn't exist":" files downloaded success"));
         return fileAddress;
     }
 
     private byte[] downloadChunk(ChunkVo chunkVo) throws Exception {
         WorkerApi workerApi = (WorkerApi) Naming.lookup("rmi://" + chunkVo.getReplicaServerName().iterator().next() + "/worker");
         return workerApi.getChunk(chunkVo);
+    }
+
+    public boolean deleteFile(String fileName) throws Exception{
+        boolean flag = masterApi.deleteNameNode(fileName);
+        System.out.println("delete file "+(flag? "success":"failed"));
+        return flag;
     }
 }

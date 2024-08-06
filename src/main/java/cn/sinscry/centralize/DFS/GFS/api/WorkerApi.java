@@ -11,4 +11,5 @@ public interface WorkerApi extends Remote {
     void backupChunk(ChunkVo chunkVo, String serverName) throws Exception;
     boolean pushChunk(ChunkVo chunkVo, byte[] bytes, List<String> replicaServerName) throws Exception;
     byte[] getChunk(ChunkVo chunkVo) throws Exception;
+    List<String> deleteChunk(ChunkVo chunkVo, List<String> replicaServerNames) throws Exception;
 }
