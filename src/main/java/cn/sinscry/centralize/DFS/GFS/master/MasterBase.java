@@ -137,13 +137,17 @@ public class MasterBase extends UnicastRemoteObject implements MasterApi {
     }
 
     @Override
-    public void addNameNode(String fileName){
+    public boolean addNameNode(String fileName) throws Exception {
+        if(this.getFileList().contains(fileName)){
+            return false;
+        }
         nameNodes.add(new NameNode(fileName));
+        return true;
     }
     @Override
     public ChunkVo addChunk(String fileName, int seq, long length, String hash){
         String chunkName = new DecimalFormat("0000").format(seq);
-        ChunkVo chunkVo = new ChunkVo(fileName,Long.parseLong(chunkName), length, seq, hash);
+        ChunkVo chunkVo = new ChunkVo(fileName, chunkName, length, seq, hash);
 
         setReplicaChunk(chunkVo);
 
@@ -193,6 +197,11 @@ public class MasterBase extends UnicastRemoteObject implements MasterApi {
         nameNodes.remove(targetNameNode);
         System.out.println(fileName+" file deleted");
         return true;
+    }
+
+    @Override
+    public List<String> getFileList() throws Exception {
+        return nameNodes.stream().map(NameNode::getNodeName).collect(Collectors.toList());
     }
 
     private void setReplicaChunk(ChunkVo chunkVo){

@@ -19,8 +19,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class WorkerBase extends UnicastRemoteObject implements WorkerApi {
     private final String currentIpAddr;
-    private final List<Long> chunkIdList;
-    private final Map<Long, String> chunkHash;
+    private final List<String> chunkIdList;
+    private final Map<String, String> chunkHash;
     private final String prefixPath;
 
     public WorkerBase(String masterIp, int masterPort, int wokerPort, String prefixPath) throws Exception {

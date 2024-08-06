@@ -30,25 +30,25 @@ public class ClientBase {
 
     public void upLoadFile(String fileAddress){
         System.out.println("uploading file...");
-        try{
+        File file = new File(fileAddress);
+        boolean flag = false;
+        try(InputStream input = new FileInputStream(file)){
             int length, seq=0;
             byte[] buffer = new byte[CHUNK_SIZE];
-            File file = new File(fileAddress);
-            masterApi.addNameNode(file.getName());
-            InputStream input = new FileInputStream(file);
-            input.skip(0);
-            while((length = input.read(buffer, 0, CHUNK_SIZE))>0){
-                byte[] upLoadBytes = new byte[length];
-                System.arraycopy(buffer, 0, upLoadBytes, 0, length);
-                String hash = SecurityUtil.getMd5(upLoadBytes);
-                uploadChunk(file.getName(), seq, length, upLoadBytes, hash);
-                seq++;
+            flag = masterApi.addNameNode(file.getName());
+            if(flag){
+                while((length = input.read(buffer, 0, CHUNK_SIZE))>0){
+                    byte[] upLoadBytes = new byte[length];
+                    System.arraycopy(buffer, 0, upLoadBytes, 0, length);
+                    String hash = SecurityUtil.getMd5(upLoadBytes);
+                    uploadChunk(file.getName(), seq, length, upLoadBytes, hash);
+                    seq++;
+                }
             }
-            input.close();
-            System.out.println("file uploaded!");
         } catch (Exception e) {
-            System.out.println("file fail to upload");
             System.out.println(e.getLocalizedMessage());
+        }finally {
+            System.out.println(file.getName()+" upload "+(flag?"success":"fail: file already exists"));
         }
     }
 
@@ -86,5 +86,11 @@ public class ClientBase {
         boolean flag = masterApi.deleteNameNode(fileName);
         System.out.println("delete file "+(flag? "success":"failed"));
         return flag;
+    }
+
+    public List<String> getFileList() throws Exception{
+        List<String> fileList = masterApi.getFileList();
+        System.out.println(fileList);
+        return fileList;
     }
 }

@@ -69,7 +69,7 @@ public class GFSTest {
     }
 
     @Test
-    public void upLoadFileTest() throws Exception {
+    public void uploadFileTest() throws Exception {
         ClientBase client = startClient(ConfigUtils.MASTER_PORT);
         client.upLoadFile(prefixPath+testFile);
     }
@@ -84,6 +84,12 @@ public class GFSTest {
     public void deleteFileTest() throws Exception{
         ClientBase client = startClient(ConfigUtils.MASTER_PORT);
         client.deleteFile(testFile);
+    }
+
+    @Test
+    public void getFileListTest() throws Exception{
+        ClientBase client = startClient(ConfigUtils.MASTER_PORT);
+        client.getFileList();
     }
 
 

@@ -8,8 +8,9 @@ import java.util.List;
 
 public interface MasterApi extends Remote {
     void registerChunkServer(String ip, int workerPort) throws Exception;
-    void addNameNode(String fileName) throws RemoteException;
+    boolean addNameNode(String fileName) throws Exception;
     ChunkVo addChunk(String fileName, int seq, long length, String hash) throws RemoteException;
     List<ChunkVo> getChunks(String fileName) throws RemoteException;
     boolean deleteNameNode(String fileName) throws Exception;
+    List<String> getFileList() throws Exception;
 }
