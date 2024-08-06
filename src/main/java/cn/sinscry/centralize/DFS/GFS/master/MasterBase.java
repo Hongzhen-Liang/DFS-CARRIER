@@ -1,6 +1,6 @@
 package cn.sinscry.centralize.DFS.GFS.master;
 
-import cn.sinscry.centralize.DFS.GFS.api.ChunkServerApi;
+import cn.sinscry.centralize.DFS.GFS.api.WorkerApi;
 import cn.sinscry.centralize.DFS.GFS.api.MasterApi;
 import cn.sinscry.common.pojo.ChunkVo;
 import cn.sinscry.common.utils.HeartbeatCheckThread;
@@ -11,12 +11,14 @@ import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class MasterBase extends UnicastRemoteObject implements MasterApi {
     private final int replicaNum=3;
@@ -40,7 +42,7 @@ public class MasterBase extends UnicastRemoteObject implements MasterApi {
         for(String chunkServer:wokerServerList){
             // use RMI to check DataNode's heartbeat
             try{
-                Map<Long, String> chunkHashMap = ((ChunkServerApi) Naming.lookup("rmi://" + chunkServer + "/worker")).getMap();
+                Map<Long, String> chunkHashMap = ((WorkerApi) Naming.lookup("rmi://" + chunkServer + "/worker")).getMap();
                 try{
                     // iterate all chunk within the server
 
@@ -88,7 +90,7 @@ public class MasterBase extends UnicastRemoteObject implements MasterApi {
                 try{
                     String serverName = chunkVo.removeReplicaServerName(failedServer);
                     String replicaServerName = allocateNode(chunkVo, serverName);
-                    ((ChunkServerApi) Naming.lookup(
+                    ((WorkerApi) Naming.lookup(
                             "rmi://" + serverName + "/chunkServer")).backupChunk(chunkVo, replicaServerName);
                     System.out.println("finish solving down server");
                 }catch (Exception e){
@@ -109,7 +111,7 @@ public class MasterBase extends UnicastRemoteObject implements MasterApi {
                         System.out.println("no replica error");
                         continue;
                     }
-                    ((ChunkServerApi) Naming.lookup(
+                    ((WorkerApi) Naming.lookup(
                             "rmi://" + serverName + "/chunkServer")).backupChunk(chunkVo, failedServer);
                 }catch (Exception e){
                     System.out.println("recover failed");
@@ -146,12 +148,22 @@ public class MasterBase extends UnicastRemoteObject implements MasterApi {
 
         for(NameNode nameNode:nameNodeList){
             if(nameNode.getNodeName().equals(fileName)){
-                nameNode.getChunkVoList().add(chunkVo);
+                nameNode.getChunkVos().add(chunkVo);
                 chunkVo.setNameNode(nameNode);
                 break;
             }
         }
         return chunkVo;
+    }
+
+    @Override
+    public List<ChunkVo> getChunks(String fileName) throws RemoteException {
+        for(NameNode nameNode:nameNodeList){
+            if(nameNode.getNodeName().equals(fileName)){
+                return nameNode.getChunkVos();
+            }
+        }
+        return new ArrayList<>();
     }
 
     private void setReplicaChunk(ChunkVo chunkVo){

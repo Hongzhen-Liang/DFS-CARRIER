@@ -1,24 +1,24 @@
 package cn.sinscry.centralize.DFS.GFS.client;
 
-import cn.sinscry.centralize.DFS.GFS.api.ChunkServerApi;
+import cn.sinscry.centralize.DFS.GFS.api.WorkerApi;
 import cn.sinscry.centralize.DFS.GFS.api.MasterApi;
 import cn.sinscry.common.pojo.ChunkVo;
+import cn.sinscry.common.utils.ConvertUtil;
 import cn.sinscry.common.utils.SecurityUtil;
 import com.google.common.collect.Lists;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.rmi.Naming;
-import java.rmi.RemoteException;
 import java.util.List;
-import java.util.Set;
+
+import static cn.sinscry.common.utils.ConfigUtils.CHUNK_SIZE;
 
 public class ClientBase {
 
-    /** 64MB */
-    private static final int CHUNK_SIZE = 64 * 1024 * 1024;
     private final MasterApi masterApi;
     private final String prefixPath;
 
@@ -26,7 +26,6 @@ public class ClientBase {
     public ClientBase(MasterApi masterApi, String prefixPath){
         this.masterApi = masterApi;
         this.prefixPath = prefixPath;
-
     }
 
     public void upLoadFile(String fileAddress){
@@ -36,7 +35,6 @@ public class ClientBase {
             byte[] buffer = new byte[CHUNK_SIZE];
             File file = new File(fileAddress);
             masterApi.addNameNode(file.getName());
-
             InputStream input = new FileInputStream(file);
             input.skip(0);
             while((length = input.read(buffer, 0, CHUNK_SIZE))>0){
@@ -57,7 +55,25 @@ public class ClientBase {
     private void uploadChunk(String fileName, int seq, long length, byte[] bytes, String hash) throws Exception{
         ChunkVo chunkVo = masterApi.addChunk(fileName, seq, length, hash);
         List<String> replicaServerName = Lists.newArrayList(chunkVo.getReplicaServerName());
-        ChunkServerApi chunkServerApi = (ChunkServerApi) Naming.lookup("rmi://" + replicaServerName.removeFirst() + "/worker");
-        chunkServerApi.pushChunk(chunkVo, bytes, replicaServerName);
+        WorkerApi workerApi = (WorkerApi) Naming.lookup("rmi://" + replicaServerName.removeFirst() + "/worker");
+        workerApi.pushChunk(chunkVo, bytes, replicaServerName);
+    }
+
+    public String downloadFile(String fileName) throws Exception{
+        System.out.println("downloading files...");
+        String fileAddress = prefixPath + "new_" + fileName;
+        File localFile = new File(fileAddress);
+        OutputStream output = new FileOutputStream(localFile);
+        List<ChunkVo> chunkVos = masterApi.getChunks(fileName);
+        for(ChunkVo chunkVo:chunkVos){
+            output.write(downloadChunk(chunkVo));
+        }
+        output.close();
+        return fileAddress;
+    }
+
+    private byte[] downloadChunk(ChunkVo chunkVo) throws Exception {
+        WorkerApi workerApi = (WorkerApi) Naming.lookup("rmi://" + chunkVo.getReplicaServerName().iterator().next() + "/worker");
+        return workerApi.getChunk(chunkVo);
     }
 }

@@ -56,6 +56,14 @@ public class GFSTest {
         client.upLoadFile(prefixPath+"test.txt");
     }
 
+    @Test
+    public void downloadFileTest() throws Exception{
+        ClientBase client = startClient(ConfigUtils.MASTER_PORT);
+        client.downloadFile("test.txt");
+    }
+
+
+
     public ClientBase startClient(int masterPort) throws Exception {
         String masterIp = InetAddress.getLocalHost().getHostAddress();
         MasterApi master = (MasterApi) Naming.lookup("rmi://" + masterIp

@@ -9,18 +9,19 @@ import java.util.List;
 
 public class NameNode implements Serializable {
     private final String nodeName;
-    private final List<ChunkVo> chunkVoList;
+    private final List<ChunkVo> chunkVos;
 
     public NameNode(String fileName){
         this.nodeName = fileName;
-        chunkVoList = new ArrayList<>();
+        chunkVos = new ArrayList<>();
     }
 
     public String getNodeName(){
         return nodeName;
     }
 
-    public List<ChunkVo> getChunkVoList(){
-        return this.chunkVoList;
+    public List<ChunkVo> getChunkVos(){
+        return this.chunkVos;
     }
+
 }
